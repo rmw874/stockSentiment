@@ -1,0 +1,11 @@
+ticker,negative,neutral,positive,fact,opinion
+CSX,3,0,2,1,4
+ISRG,3,0,2,0,5
+TXN,4,0,0,0,4
+APD,0,0,3,0,3
+AAPL,2,0,2,1,3
+DOCN,0,0,4,1,3
+GBCI,0,1,3,2,2
+WRB,1,2,2,2,3
+OCFC,0,2,1,2,1
+SMCI,0,1,4,2,3

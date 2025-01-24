@@ -4,8 +4,6 @@ import requests
 import time
 import torch
 import scipy
-import numpy as np
-import pandas as pd
 from bs4 import BeautifulSoup
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -37,15 +35,16 @@ def getData(pages, num_articles):
     fetched = []
     stocks = []
     for page in range(pages):
+        print(f'Current page: {page}')
         response = requests.get(FMPUrl(page=page, num_articles=num_articles)).json()
         content = response['content']
         stocks += [splitTicker(article['tickers']) for article in content]
         fetched += [article['content'] for article in content]
-        time.sleep(1.0)
+        time.sleep(.5)
     tickers = list(set(stocks))
     return tickers, fetched, stocks
 
-def getSentiment(pages, num_articles, opinion_treshhold = 0.8):
+def getSentiment(pages, num_articles, opinion_treshhold=0.8):
     data = getData(pages=pages, num_articles=num_articles)
     stocks = list(data.keys())
     result = {stock: {
@@ -74,5 +73,3 @@ def getSentiment(pages, num_articles, opinion_treshhold = 0.8):
                 else:
                     result[ticker]['fact'] += 1
     return result
-
-print(getSentiment(1,3))
