@@ -1,8 +1,16 @@
 import configparser
 import json
 import requests
+import time
+import torch
+import scipy
 import numpy as np
 import pandas as pd
+from bs4 import BeautifulSoup
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
+model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
 
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -14,16 +22,57 @@ def FMPUrl(page=0, num_articles=1):
 def splitTicker(ticker):
     return ticker.split(':')[1] if ':' in ticker else ticker
 
+def GroupContentByStock(func):
+    def wrapper(*args, **params):
+        tickers, articles, stocks = func(*args, **params)
+        data = {stock:[] for stock in stocks}
+        for stock, article in zip(stocks, articles):
+            soup = BeautifulSoup(article, 'html.parser')
+            data[stock] += [paragraph.get_text() for paragraph in soup.find_all('p')] #for each stock, append all paragraphs where it is mentioned
+        return data
+    return wrapper
+
+@GroupContentByStock
 def getData(pages, num_articles):
     fetched = []
-    tickers = []
+    stocks = []
     for page in range(pages):
         response = requests.get(FMPUrl(page=page, num_articles=num_articles)).json()
         content = response['content']
-        for article in content:
-            fetched.append(article)
-            tickers.append(splitTicker(article['tickers']))
-    return fetched, tickers
+        stocks += [splitTicker(article['tickers']) for article in content]
+        fetched += [article['content'] for article in content]
+        time.sleep(1.0)
+    tickers = list(set(stocks))
+    return tickers, fetched, stocks
 
-_, tickers = getData(1,1)
-print(tickers)
+def getSentiment(pages, num_articles, opinion_treshhold = 0.8):
+    data = getData(pages=pages, num_articles=num_articles)
+    stocks = list(data.keys())
+    result = {stock: {
+        'negative': 0, 
+        'neutral': 0, 
+        'positive': 0,
+        'fact': 0,
+        'opinion': 0
+    } for stock in stocks}
+    tokenizer_kwargs = {"padding": True, "truncation": True, "max_length": 512}
+
+
+    for ticker, paragraphs in data.items():
+        for paragraph in paragraphs:
+            with torch.no_grad():
+                inputs = tokenizer(paragraph, return_tensors="pt", **tokenizer_kwargs)
+                outputs = model(**inputs)
+                probabilities = scipy.special.softmax(outputs.logits.numpy().squeeze())
+                
+                sentiment = model.config.id2label[probabilities.argmax()] 
+                result[ticker][sentiment.lower()] += 1 #sentiment is label 'positive', 'negative' or 'neutral'. lower to match results setup
+
+                max_prob = probabilities.max()
+                if max_prob >= opinion_treshhold:
+                    result[ticker]['opinion'] += 1
+                else:
+                    result[ticker]['fact'] += 1
+    return result
+
+print(getSentiment(1,3))
