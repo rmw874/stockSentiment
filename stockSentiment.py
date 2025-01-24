@@ -1,11 +1,11 @@
 import configparser
-import json
 import requests
 import time
 import torch
 import scipy
 from bs4 import BeautifulSoup
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from tqdm import tqdm
 
 tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
 model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
@@ -34,8 +34,7 @@ def GroupContentByStock(func):
 def getData(pages, num_articles):
     fetched = []
     stocks = []
-    for page in range(pages):
-        print(f'Current page: {page}')
+    for page in tqdm(range(pages), 'Fetching pages'):
         response = requests.get(FMPUrl(page=page, num_articles=num_articles)).json()
         content = response['content']
         stocks += [splitTicker(article['tickers']) for article in content]
@@ -57,8 +56,8 @@ def getSentiment(pages, num_articles, opinion_treshhold=0.8):
     tokenizer_kwargs = {"padding": True, "truncation": True, "max_length": 512}
 
 
-    for ticker, paragraphs in data.items():
-        for paragraph in paragraphs:
+    for ticker in tqdm(data.keys(), 'Processing tickers'):
+        for paragraph in data[ticker]:
             with torch.no_grad():
                 inputs = tokenizer(paragraph, return_tensors="pt", **tokenizer_kwargs)
                 outputs = model(**inputs)
@@ -68,7 +67,7 @@ def getSentiment(pages, num_articles, opinion_treshhold=0.8):
                 result[ticker][sentiment.lower()] += 1 #sentiment is label 'positive', 'negative' or 'neutral'. lower to match results setup
 
                 max_prob = probabilities.max()
-                if max_prob >= opinion_treshhold:
+                if max_prob >= opinion_treshhold and sentiment.lower() != 'neutral':
                     result[ticker]['opinion'] += 1
                 else:
                     result[ticker]['fact'] += 1
