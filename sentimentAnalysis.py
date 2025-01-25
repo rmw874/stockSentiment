@@ -38,6 +38,7 @@ def addPolarizationMetrics(df):
     return df
     
 def plot_market_psychology(df):
+    #todo: update depending on dataset distribution
     df = df[df['volume'] >= 50]
     df = df[df['volume'] <= 500]
 
@@ -61,9 +62,10 @@ def plot_market_psychology(df):
     volume_threshold = df['volume'].quantile(0.8)
     conviction_threshold = df['conviction'].quantile(0.8)
     
-    for _, row in df.iterrows():
+    for idx, row in df.iterrows():
         if row['volume'] > volume_threshold or row['conviction'] > conviction_threshold:
-            plt.annotate(row['ticker'], 
+            # plt.annotate(row['ticker'], #used if reading csv. idx used if df hasn't been transformed
+            plt.annotate(idx,
                         (row['volume'], row['conviction']),
                         xytext=(5, 5),
                         textcoords='offset points',
@@ -73,10 +75,10 @@ def plot_market_psychology(df):
     plt.subplots_adjust(top=0.85)
     return plt
 
-df_test = addPolarizationMetrics(createDF(5, 500))
+df_test = addPolarizationMetrics(createDF(5, 750))
 saveDF(output_path='results/', df=df_test)
 
-# test = pd.read_csv('results/2025-01-24-195401_sentiment.csv')
+# test = pd.read_csv('results/2025-01-24-220835_sentiment.csv')
 # fig = plot_market_psychology(test)
 # plt.savefig('market_psychology_1.png', dpi=300, bbox_inches='tight')
 # plt.close()
