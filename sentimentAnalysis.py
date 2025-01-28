@@ -91,7 +91,7 @@ def plot_market_psychology(df):
     return plt
 
 
-df_test = addPolarizationMetrics(createDF(5, 750))
+df_test = addPolarizationMetrics(createDF(7, 500))
 saveDF(output_path="results/", df=df_test)
 
 # test = pd.read_csv('results/2025-01-24-220835_sentiment.csv')
